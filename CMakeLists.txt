@@ -3,7 +3,7 @@ project(riscv_simulator)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(riscv_simulator
+add_executable(code
         src/base_run.cpp
         src/memory.h
         src/register.h src/core.h)
