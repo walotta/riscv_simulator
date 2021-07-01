@@ -65,7 +65,7 @@ private:
                 env.type='I';
                 break;
             case (unsigned int)0b1100011:
-                env.type='S';
+                env.type='B';
                 break;
             case (unsigned int)0b0000011:
                 env.type='I';
@@ -137,8 +137,8 @@ private:
             env.funct7=(env.cmd&((unsigned int)0b1111111<<25))>>25;
             env.imm=0;
         }
-        env.rs1=reg_living[env.rs1];
-        env.rs2=reg_living[env.rs2];
+        env.rs1=reg_living.read(env.rs1);
+        env.rs2=reg_living.read(env.rs2);
     }
 
     void EX(unsigned int& pc,environment& env)
@@ -296,13 +296,15 @@ private:
                         {
                             case 0b0000000:
                                 //SRLI
-                                env.wb_value=env.imm>>env.shamt;
+                                env.wb_value=env.rs1>>env.shamt;
                                 pc+=4;
                                 break;
                             case 0b0100000:
                                 //SRAI
-                                env.wb_value=env.imm>>env.shamt;
-                                if(env.rs1&(1<<31))
+                                bool flag=false;
+                                if(env.rs1&(1<<31))flag=true;
+                                env.wb_value=env.rs1>>env.shamt;
+                                if(flag)
                                 {
                                     for(int i=0;i<env.shamt;i++)
                                     {
@@ -417,7 +419,7 @@ private:
                         {
                             unsigned int tem;
                             tem=mem_living.read(env.mem_operator_address+1);
-                            tem<<8;
+                            tem<<=8;
                             tem+=mem_living.read(env.mem_operator_address);
                             expend_with_symbol(tem,15);
                             env.wb_value=tem;
@@ -429,7 +431,7 @@ private:
                             unsigned int tem=0;
                             for(int i=3;i>=0;i--)
                             {
-                                tem<<8;
+                                tem<<=8;
                                 tem+=mem_living.read(env.mem_operator_address+i);
                             }
                             env.wb_value=tem;
@@ -459,13 +461,13 @@ private:
                     case 0b001:
                         //SH
                         mem_living.write(env.mem_operator_address, env.rs2&0b11111111);
-                        mem_living.write(env.mem_operator_address+1, env.rs2&((unsigned int)0b11111111<<8));
+                        mem_living.write(env.mem_operator_address+1, ((env.rs2>>8)&(unsigned int)0b11111111));
                         break;
                     case 0b010:
                         //SW
                         for(int i=0;i<4;i++)
                         {
-                            mem_living.write(env.mem_operator_address+i, env.rs2&((unsigned int)0b11111111<<(8*i)));
+                            mem_living.write(env.mem_operator_address+i, (env.rs2>>(8*i))&((unsigned int)0b11111111));
                         }
                         break;
                 }
@@ -479,42 +481,42 @@ private:
         {
             case (unsigned int)0b0110111:
                 //LUI
-                reg_living[env.rd]=env.wb_value;
+                reg_living.write(env.rd,env.wb_value);
                 break;
             case (unsigned int)0b0010111:
                 //AUIPC
-                reg_living[env.rd]=env.wb_value;
+                reg_living.write(env.rd,env.wb_value);
                 break;
             case (unsigned int)0b1101111:
                 //JAL
-                reg_living[env.rd]=env.wb_value;
+                reg_living.write(env.rd,env.wb_value);
                 break;
             case (unsigned int)0b1100111:
                 //JALR
-                reg_living[env.rd]=env.wb_value;
+                reg_living.write(env.rd,env.wb_value);
                 break;
             case (unsigned int)0b0000011:
                 switch(env.funct3)
                 {
                     case 0b000:
                         //LB
-                        reg_living[env.rd]=env.wb_value;
+                        reg_living.write(env.rd,env.wb_value);
                         break;
                     case 0b001:
                         //LH
-                        reg_living[env.rd]=env.wb_value;
+                        reg_living.write(env.rd,env.wb_value);
                         break;
                     case 0b010:
                         //LW
-                        reg_living[env.rd]=env.wb_value;
+                        reg_living.write(env.rd,env.wb_value);
                         break;
                     case 0b100:
                         //LBU
-                        reg_living[env.rd]=env.wb_value;
+                        reg_living.write(env.rd,env.wb_value);
                         break;
                     case 0b101:
                         //LHU
-                        reg_living[env.rd]=env.wb_value;
+                        reg_living.write(env.rd,env.wb_value);
                         break;
                 }
                 break;
@@ -523,23 +525,23 @@ private:
                 {
                     case 0b000:
                         //ADDI
-                        reg_living[env.rd]=env.wb_value;
+                        reg_living.write(env.rd,env.wb_value);
                         break;
                     case 0b001:
                         //SLLI
-                        reg_living[env.rd]=env.wb_value;
+                        reg_living.write(env.rd,env.wb_value);
                         break;
                     case 0b010:
                         //SLTI
-                        reg_living[env.rd]=env.wb_value;
+                        reg_living.write(env.rd,env.wb_value);
                         break;
                     case 0b011:
                         //SLTIU
-                        reg_living[env.rd]=env.wb_value;
+                        reg_living.write(env.rd,env.wb_value);
                         break;
                     case 0b100:
                         //XORI
-                        reg_living[env.rd]=env.wb_value;
+                        reg_living.write(env.rd,env.wb_value);
                         break;
                     case 0b101:
                         //SRLI||SRAI
@@ -547,21 +549,21 @@ private:
                         {
                             case 0b0000000:
                                 //SRLI
-                                reg_living[env.rd]=env.wb_value;
+                                reg_living.write(env.rd,env.wb_value);
                                 break;
                             case 0b0100000:
                                 //SRAI
-                                reg_living[env.rd]=env.wb_value;
+                                reg_living.write(env.rd,env.wb_value);
                                 break;
                         }
                         break;
                     case 0b110:
                         //ORI
-                        reg_living[env.rd]=env.wb_value;
+                        reg_living.write(env.rd,env.wb_value);
                         break;
                     case 0b111:
                         //ANDI
-                        reg_living[env.rd]=env.wb_value;
+                        reg_living.write(env.rd,env.wb_value);
                         break;
                 }
                 break;
@@ -573,50 +575,50 @@ private:
                         {
                             case 0b0000000:
                                 //ADD
-                                reg_living[env.rd]=env.wb_value;
+                                reg_living.write(env.rd,env.wb_value);
                                 break;
                             case 0b0100000:
                                 //SUB
-                                reg_living[env.rd]=env.wb_value;
+                                reg_living.write(env.rd,env.wb_value);
                                 break;
                         }
                         break;
                     case 0b001:
                         //SLL
-                        reg_living[env.rd]=env.wb_value;
+                        reg_living.write(env.rd,env.wb_value);
                         break;
                     case 0b010:
                         //SLT
-                        reg_living[env.rd]=env.wb_value;
+                        reg_living.write(env.rd,env.wb_value);
                         break;
                     case 0b011:
                         //SLTU
-                        reg_living[env.rd]=env.wb_value;
+                        reg_living.write(env.rd,env.wb_value);
                         break;
                     case 0b100:
                         //XOR
-                        reg_living[env.rd]=env.wb_value;
+                        reg_living.write(env.rd,env.wb_value);
                         break;
                     case 0b101:
                         switch(env.funct7)
                         {
                             case 0b0000000:
                                 //SRL
-                                reg_living[env.rd]=env.wb_value;
+                                reg_living.write(env.rd,env.wb_value);
                                 break;
                             case 0b0100000:
                                 //SRA
-                                reg_living[env.rd]=env.wb_value;
+                                reg_living.write(env.rd,env.wb_value);
                                 break;
                         }
                         break;
                     case 0b110:
                         //OR
-                        reg_living[env.rd]=env.wb_value;
+                        reg_living.write(env.rd,env.wb_value);
                         break;
                     case 0b111:
                         //AND
-                        reg_living[env.rd]=env.wb_value;
+                        reg_living.write(env.rd,env.wb_value);
                         break;
                 }
                 break;
@@ -632,28 +634,27 @@ public:
         while(true)
         {
             environment env;
-            std::cerr<<"======\n@"<<std::hex<<std::setw(8)<<std::setfill('0')<<pc;
+            //std::cerr<<"======\n@"<<std::hex<<std::setw(8)<<std::setfill('0')<<pc;
+            if(pc==0x00001060)
+                int iiiii=0;
             IF(pc,env);
             if(env.cmd==(unsigned int)0x0ff00513)
             {
-                std::cout<<(((unsigned int)reg_living[10]) & 255u)<<std::endl;
+                std::cout<<(((unsigned int)reg_living.read(10)) & 255u)<<std::endl;
                 break;
             }
             ID(pc,env);
             EX(pc,env);
             MEM(pc,env);
             WB(pc,env);
-            std::cerr<<' '<<std::setw(8)<<std::setfill('0')<<env.cmd<<std::endl;
-            std::cerr<<"opcode ";
-            unsigned int tem=env.opcode;
-            int tem_times=7;
-            while((tem_times--)!=0)
-            {
-                std::cerr<<tem%2?'1':'0';
-                tem/=2;
-            }
-            std::cerr<<" imm "<<env.imm<<std::endl;
-            reg_living.debug_print();
+            //std::cerr<<' '<<std::setw(8)<<std::setfill('0')<<env.cmd<<std::endl;
+            //std::cerr<<"opcode ";
+            //unsigned int tem=env.opcode;
+            //int tem_times=7;
+            //while((tem_times--)!=0){std::cerr<<tem%2?'1':'0';tem/=2;}
+            //std::cerr<<" imm "<<std::dec<<(int)env.imm<<std::hex<<std::endl;
+            //reg_living.debug_print();
+            //mem_living.debug_print();
         }
     }
 };

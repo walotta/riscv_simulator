@@ -28,7 +28,8 @@ int main()
         for(int i=1;i<=8;i++)
         {
             tar_address*=16;
-            tar_address+=readIn[i]-'0';
+            if(readIn[i]>='A'&&readIn[i]<='Z')tar_address+=readIn[i]-'A'+10;
+            else tar_address+=readIn[i]-'0';
         }
         vector<unsigned int>insert_list;
         std::cin>>readIn;
