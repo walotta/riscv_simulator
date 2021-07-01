@@ -26,6 +26,35 @@ private:
         unsigned int wb_value=0;
         unsigned int mem_operator_address=0;
         char type{};
+        unsigned int pc{};
+        void allClear()
+        {
+            cmd=imm=rd=rs1=rs2=shamt=funct3=funct7=opcode=wb_value=mem_operator_address=pc=0;
+            type=char(0);
+        }
+        void clearDate()
+        {
+            cmd=imm=rd=rs1=rs2=shamt=funct3=funct7=opcode=wb_value=mem_operator_address=0;
+            type=char(0);
+        }
+        environment& operator=(const environment& o)
+        {
+            if(this==&o)return *this;
+            cmd=o.cmd;
+            imm=o.imm;
+            rd=o.rd;
+            rs1=o.rs1;
+            rs2=o.rs2;
+            shamt=o.shamt;
+            funct3=o.funct3;
+            funct7=o.funct7;
+            opcode=o.opcode;
+            wb_value=o.wb_value;
+            mem_operator_address=o.mem_operator_address;
+            type=o.type;
+            pc=o.pc;
+            return *this;
+        }
     };
 
     void expend_with_symbol(unsigned int& to_expend,int max_pos)
@@ -37,17 +66,18 @@ private:
         }
     }
 
-    void IF(unsigned int& pc,environment& env)
+    void IF(environment& env)
     {
         env.cmd=0;
         for(int i=0;i<4;i++)
         {
             env.cmd<<=8;
-            env.cmd+=mem_living[pc+3-i];
+            env.cmd+=mem_living[env.pc+3-i];
         }
+        env.pc+=4;
     }
 
-    void ID(unsigned int& pc,environment& env)
+    void ID(environment& env)
     {
         env.opcode=(unsigned int)0b01111111&env.cmd;
         switch(env.opcode)
@@ -141,29 +171,27 @@ private:
         env.rs2=reg_living.read(env.rs2);
     }
 
-    void EX(unsigned int& pc,environment& env)
+    void EX(environment& env)
     {
         switch(env.opcode)
         {
             case (unsigned int)0b0110111:
                 //LUI
                 env.wb_value=(env.imm);
-                pc+=4;
                 break;
             case (unsigned int)0b0010111:
                 //AUIPC
-                env.wb_value=(env.imm)+pc;
-                pc+=4;
+                env.wb_value=(env.imm)+env.pc-4;
                 break;
             case (unsigned int)0b1101111:
                 //JAL
-                env.wb_value=pc+4;
-                pc+=env.imm;
+                env.wb_value=env.pc;
+                env.pc+=env.imm-4;
                 break;
             case (unsigned int)0b1100111:
                 //JALR
-                env.wb_value=pc+4;
-                pc=(env.imm+env.rs1)&~1;
+                env.wb_value=env.pc;
+                env.pc=(env.imm+env.rs1)&~1;
                 break;
             case (unsigned int)0b1100011:
                 switch(env.funct3)
@@ -171,44 +199,32 @@ private:
                     case 0b000:
                         //BEQ
                         if(env.rs1==env.rs2)
-                            pc+=env.imm;
-                        else
-                            pc+=4;
+                            env.pc+=env.imm-4;
                         break;
                     case 0b001:
                         //BNE
                         if(env.rs1!=env.rs2)
-                            pc+=env.imm;
-                        else
-                            pc+=4;
+                            env.pc+=env.imm-4;
                         break;
                     case 0b100:
                         //BLT
                         if((int)env.rs1<(int)env.rs2)
-                            pc+=env.imm;
-                        else
-                            pc+=4;
+                            env.pc+=env.imm-4;
                         break;
                     case 0b101:
                         //BGE
                         if((int)env.rs1>=(int)env.rs2)
-                            pc+=env.imm;
-                        else
-                            pc+=4;
+                            env.pc+=env.imm-4;
                         break;
                     case 0b110:
                         //BLTU
                         if(env.rs1<env.rs2)
-                            pc+=env.imm;
-                        else
-                            pc+=4;
+                            env.pc+=env.imm-4;
                         break;
                     case 0b111:
                         //BGEU
                         if(env.rs1>=env.rs2)
-                            pc+=env.imm;
-                        else
-                            pc+=4;
+                            env.pc+=env.imm-4;
                         break;
                 }
                 break;
@@ -218,27 +234,22 @@ private:
                     case 0b000:
                         //LB
                         env.mem_operator_address=env.rs1+env.imm;
-                        pc+=4;
                         break;
                     case 0b001:
                         //LH
                         env.mem_operator_address=env.rs1+env.imm;
-                        pc+=4;
                         break;
                     case 0b010:
                         //LW
                         env.mem_operator_address=env.rs1+env.imm;
-                        pc+=4;
                         break;
                     case 0b100:
                         //LBU
                         env.mem_operator_address=env.rs1+env.imm;
-                        pc+=4;
                         break;
                     case 0b101:
                         //LHU
                         env.mem_operator_address=env.rs1+env.imm;
-                        pc+=4;
                         break;
                 }
                 break;
@@ -248,17 +259,14 @@ private:
                     case 0b000:
                         //SB
                         env.mem_operator_address=env.rs1+env.imm;
-                        pc+=4;
                         break;
                     case 0b001:
                         //SH
                         env.mem_operator_address=env.rs1+env.imm;
-                        pc+=4;
                         break;
                     case 0b010:
                         //SW
                         env.mem_operator_address=env.rs1+env.imm;
-                        pc+=4;
                         break;
                 }
                 break;
@@ -268,27 +276,22 @@ private:
                     case 0b000:
                         //ADDI
                         env.wb_value=env.rs1+env.imm;
-                        pc+=4;
                         break;
                     case 0b001:
                         //SLLI
                         env.wb_value=(env.rs1)<<(env.shamt);
-                        pc+=4;
                         break;
                     case 0b010:
                         //SLTI
                         env.wb_value=(unsigned int)((int)env.rs1<(int)env.imm);
-                        pc+=4;
                         break;
                     case 0b011:
                         //SLTIU
                         env.wb_value=(unsigned int)(env.rs1<env.imm);
-                        pc+=4;
                         break;
                     case 0b100:
                         //XORI
                         env.wb_value=env.rs1 xor env.rd;
-                        pc+=4;
                         break;
                     case 0b101:
                         //SRLI||SRAI
@@ -297,7 +300,6 @@ private:
                             case 0b0000000:
                                 //SRLI
                                 env.wb_value=env.rs1>>env.shamt;
-                                pc+=4;
                                 break;
                             case 0b0100000:
                                 //SRAI
@@ -311,19 +313,16 @@ private:
                                         env.wb_value+=(1<<(31-i));
                                     }
                                 }
-                                pc+=4;
                                 break;
                         }
                         break;
                     case 0b110:
                         //ORI
                         env.wb_value=env.rs1|env.imm;
-                        pc+=4;
                         break;
                     case 0b111:
                         //ANDI
                         env.wb_value=env.rs1&env.imm;
-                        pc+=4;
                         break;
                 }
                 break;
@@ -336,34 +335,28 @@ private:
                             case 0b0000000:
                                 //ADD
                                 env.wb_value=env.rs1+env.rs2;
-                                pc+=4;
                                 break;
                             case 0b0100000:
                                 //SUB
                                 env.wb_value=env.rs1-env.rs2;
-                                pc+=4;
                                 break;
                         }
                         break;
                     case 0b001:
                         //SLL
                         env.wb_value=env.rs1<<(env.rs2&0b11111);
-                        pc+=4;
                         break;
                     case 0b010:
                         //SLT
                         env.wb_value=((int)env.rs1<(int)env.rs2);
-                        pc+=4;
                         break;
                     case 0b011:
                         //SLTU
                         env.wb_value=(env.rs1<env.rs2);
-                        pc+=4;
                         break;
                     case 0b100:
                         //XOR
                         env.wb_value=env.rs1 xor env.rs2;
-                        pc+=4;
                         break;
                     case 0b101:
                         switch(env.funct7)
@@ -371,7 +364,6 @@ private:
                             case 0b0000000:
                                 //SRL
                                 env.wb_value=env.rs1>>(env.rs2&0b11111);
-                                pc+=4;
                                 break;
                             case 0b0100000:
                                 //SRA
@@ -383,26 +375,23 @@ private:
                                         env.wb_value+=(1<<(31-i));
                                     }
                                 }
-                                pc+=4;
                                 break;
                         }
                         break;
                     case 0b110:
                         //OR
                         env.wb_value=env.rs1|env.rs2;
-                        pc+=4;
                         break;
                     case 0b111:
                         //AND
                         env.wb_value=env.rs1&env.rs2;
-                        pc+=4;
                         break;
                 }
                 break;
         }
     }
 
-    void MEM(unsigned int& pc,environment& env)
+    void MEM(environment& env)
     {
         switch(env.opcode)
         {
@@ -475,7 +464,7 @@ private:
         }
     }
 
-    void WB(unsigned int& pc,environment& env)
+    void WB(environment& env)
     {
         switch(env.opcode)
         {
@@ -630,23 +619,33 @@ public:
     reg reg_living;
     void run()
     {
-        unsigned int pc=0;
+        environment beg;
+        environment if_to_id;
+        environment id_to_ex;
+        environment ex_to_mem;
+        environment mem_to_wb;
+        beg.pc=0;
         while(true)
         {
-            environment env;
             //std::cerr<<"======\n@"<<std::hex<<std::setw(8)<<std::setfill('0')<<pc;
-            if(pc==0x00001060)
+            if(beg.pc==0x00001060)
                 int iiiii=0;
-            IF(pc,env);
-            if(env.cmd==(unsigned int)0x0ff00513)
+            IF(beg);
+            if(beg.cmd==(unsigned int)0x0ff00513)
             {
                 std::cout<<(((unsigned int)reg_living.read(10)) & 255u)<<std::endl;
                 break;
             }
-            ID(pc,env);
-            EX(pc,env);
-            MEM(pc,env);
-            WB(pc,env);
+            if_to_id=beg;
+            ID(if_to_id);
+            id_to_ex=if_to_id;
+            EX(id_to_ex);
+            ex_to_mem=id_to_ex;
+            MEM(ex_to_mem);
+            mem_to_wb=ex_to_mem;
+            WB(mem_to_wb);
+            beg=mem_to_wb;
+            beg.clearDate();
             //std::cerr<<' '<<std::setw(8)<<std::setfill('0')<<env.cmd<<std::endl;
             //std::cerr<<"opcode ";
             //unsigned int tem=env.opcode;
