@@ -30,7 +30,7 @@ public:
     }
     void debug_print()
     {
-        std::cerr<<"reg change"<<std::endl;
+        //std::cerr<<"reg change"<<std::endl;
         for(int i=0;i<32;i++)
         {
             if(debugList[i]!=regList[i])
