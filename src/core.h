@@ -164,7 +164,7 @@ private:
         int MEM=0;
         int WB=0;
         bool simple_load=false;
-        reg_use reg_statue[32]{};
+        int wait_clock=0;
     }waitClock_mirror,waitClock;
     int clock_cnt=0;
 
@@ -786,6 +786,7 @@ private:
             if(waitClock_mirror.EX<0)
                 waitClock.MEM=-1;
             //std::cerr<<"finish"<<std::endl;
+            waitClock.wait_clock=2;
         }
 
     }
@@ -1020,6 +1021,11 @@ public:
             //std::cerr<<"=====\nclock "<<std::dec<<clock_cnt++<<std::endl;
             if(clock_cnt==53)
                 int a=0;
+            if(waitClock.wait_clock!=0)
+            {
+                waitClock.wait_clock--;
+                continue;
+            }
             load();
             cal();
             //reg_living.debug_print();
