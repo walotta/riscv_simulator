@@ -174,11 +174,75 @@ private:
     }waitClock_mirror,waitClock;
     unsigned int clock_cnt=0;
 
-    unsigned int guess_next_pc(unsigned int now_pc)
+    struct GUESS_REG
     {
-        //todo
+        enum status{strong_next=0,weak_next=1,weak_jump=2,strong_jump=3};
+        static const unsigned int map_size=1<<17;
+        unsigned int pool[map_size]{};
+        bool history_pool[map_size]{};
+        GUESS_REG()
+        {
+            for(unsigned int & i : pool)i=status(weak_next);
+            for(bool & i : history_pool)i=false;
+        }
+    }guessReg;
+
+    unsigned int trueHistory=0;
+    bool guess_next_pc(unsigned int now_pc)
+    {
         runReg.all_branch++;
-        return now_pc+4;
+        //todo
+        //true jump
+        //false not jump
+        unsigned int token=now_pc&(unsigned int)(0xFFFF);
+        if(guessReg.pool[token]==GUESS_REG::weak_jump||guessReg.pool[token]==GUESS_REG::strong_jump)
+        {
+            //guess_true++;
+            return true;
+        }else
+        {
+            //guess_false++;
+            return false;
+        }
+        //return guessReg.history_pool[trueHistory];
+    }
+
+    void guess_return(unsigned int now_pc,bool is_correct)
+    {
+        /*guessReg.history_pool[trueHistory]=(unsigned int)is_correct;
+        trueHistory<<=1;
+        trueHistory+=(unsigned int)is_correct;
+        trueHistory&=(unsigned int)(0xFFFF);
+        return;*/
+        unsigned int token=now_pc&(unsigned int)(0xFFFF);
+        /*bool is_jump;
+        if(is_correct)
+        {
+            if(guessReg.pool[token]==GUESS_REG::weak_jump||guessReg.pool[token]==GUESS_REG::strong_jump)is_jump=true;
+            else is_jump=false;
+        }else
+        {
+            if(guessReg.pool[token]==GUESS_REG::weak_jump||guessReg.pool[token]==GUESS_REG::strong_jump)is_jump=false;
+            else is_jump=true;
+        }
+        if(is_jump)
+        {
+            if(guessReg.pool[token]!=GUESS_REG::strong_jump)guessReg.pool[token]++;
+        }else
+        {
+            if(guessReg.pool[token]!=GUESS_REG::strong_next)guessReg.pool[token]--;
+        }*/
+        if(is_correct)
+        {
+            if(guessReg.pool[token]==GUESS_REG::weak_jump)guessReg.pool[token]=GUESS_REG::strong_jump;
+            if(guessReg.pool[token]==GUESS_REG::weak_next)guessReg.pool[token]=GUESS_REG::strong_next;
+        }else
+        {
+            if(guessReg.pool[token]==GUESS_REG::weak_jump)guessReg.pool[token]=GUESS_REG::weak_next;
+            if(guessReg.pool[token]==GUESS_REG::weak_next)guessReg.pool[token]=GUESS_REG::weak_jump;
+            if(guessReg.pool[token]==GUESS_REG::strong_jump)guessReg.pool[token]=GUESS_REG::weak_jump;
+            if(guessReg.pool[token]==GUESS_REG::strong_next)guessReg.pool[token]=GUESS_REG::weak_next;
+        }
     }
 
     void IF(const unsigned int& pc,if_id& out)
@@ -241,7 +305,13 @@ private:
                     }
                     if(out.branch_cmd)
                     {
-                        out.guess_pc=guess_next_pc(out.pc);
+                        if(guess_next_pc(out.pc))
+                        {
+                            out.guess_pc=out.pc+out.imm;
+                        }else
+                        {
+                            out.guess_pc=out.pc+4;
+                        }
                         waitClock.ID++;
                     }
                 }else
@@ -415,7 +485,13 @@ private:
                 }
                 if(out.branch_cmd)
                 {
-                    out.guess_pc=guess_next_pc(out.pc);
+                    if(guess_next_pc(out.pc))
+                    {
+                        out.guess_pc=out.pc+out.imm;
+                    }else
+                    {
+                        out.guess_pc=out.pc+4;
+                    }
                     waitClock.ID++;
                 }
             }else
@@ -708,7 +784,17 @@ private:
                 out.change_to_pc=out.pc;
                 out.pc=in.pc;
                 out.guess_wrong=true;
-                runReg.wrong_cnt++;
+            }
+            if(in.branch_cmd)
+            {
+                if(in.guess_pc!=out.pc)
+                {
+                    runReg.wrong_cnt++;
+                    guess_return(in.pc,false);
+                }else
+                {
+                    guess_return(in.pc,true);
+                }
             }
             out.pc=in.pc;
             //std::cerr<<"finish"<<std::endl;
@@ -1088,6 +1174,7 @@ public:
         std::cerr<<"cpu run times: "<<clock_cnt<<std::endl;
         std::cerr<<"branch command number: "<<runReg.all_branch<<std::endl;
         std::cerr<<"correct guess number:  "<<runReg.all_branch-runReg.wrong_cnt<<std::endl;
+        std::cerr<<"success rate: "<<std::right<<std::fixed<<std::setprecision(3)<<(double)(runReg.all_branch-runReg.wrong_cnt)/runReg.all_branch*100<<'%'<<std::endl;
     }
 };
 
