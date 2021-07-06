@@ -99,11 +99,12 @@ private:
         unsigned int rd{};
         unsigned int mem_operator_address{};
         unsigned int pc{};
+        unsigned int change_to_pc{};
         unsigned int cmd{};
         bool has_jump=false;
         void clear()
         {
-            opcode=cmd=funct3=funct7=wb_value=rs1=rs2=rd=mem_operator_address=pc=0;
+            opcode=cmd=funct3=funct7=wb_value=rs1=rs2=rd=mem_operator_address=pc=change_to_pc=0;
             has_jump=false;
         }
     };
@@ -175,7 +176,7 @@ private:
         {
             waitClock.IF--;
             runReg.if_run=false;
-            runReg.pc-=4;
+            //runReg.pc-=4;
             //std::cerr<<"block"<<std::endl;
         }
         else
@@ -190,6 +191,47 @@ private:
                 out.cmd<<=8;
                 out.cmd+=mem_living[pc+3-i];
             }
+            /*if()
+            switch(out.cmd&(unsigned int)(0b1111111))
+            {
+                case (unsigned int)0b1101111:
+                    //JAL
+                    out.jump_cmd=true;
+                    break;
+                case (unsigned int)0b1100111:
+                    //JALR
+                    out.jump_cmd=true;
+                    break;
+                case (unsigned int)0b1100011:
+                    switch(out.funct3)
+                    {
+                        case 0b000:
+                            //BEQ
+                            out.jump_cmd=true;
+                            break;
+                        case 0b001:
+                            //BNE
+                            out.jump_cmd=true;
+                            break;
+                        case 0b100:
+                            //BLT
+                            out.jump_cmd=true;
+                            break;
+                        case 0b101:
+                            //BGE
+                            out.jump_cmd=true;
+                            break;
+                        case 0b110:
+                            //BLTU
+                            out.jump_cmd=true;
+                            break;
+                        case 0b111:
+                            //BGEU
+                            out.jump_cmd=true;
+                            break;
+                    }
+                    break;
+            }*/
         }
     }
 
@@ -225,7 +267,7 @@ private:
         }
         else
         {
-            if(!runReg.mirror_if_run&&!runReg.run_with_out_if)
+            if(!runReg.mirror_if_run&&!runReg.mirror_run_with_out_if)
             {
                 //std::cerr<<"block"<<std::endl;
                 runReg.id_run=false;
@@ -453,7 +495,7 @@ private:
                 case (unsigned int)0b1101111:
                     //JAL
                     out.wb_value=in.pc+4;
-                    out.pc+=in.imm;
+                    out.pc=in.pc+in.imm;
                     out.has_jump=true;
                     break;
                 case (unsigned int)0b1100111:
@@ -469,7 +511,7 @@ private:
                             //BEQ
                             if(in.rs1==in.rs2)
                             {
-                                out.pc+=in.imm;
+                                out.pc=in.pc+in.imm;
                                 out.has_jump=true;
                             }
                             break;
@@ -477,7 +519,7 @@ private:
                             //BNE
                             if(in.rs1!=in.rs2)
                             {
-                                out.pc+=in.imm;
+                                out.pc=in.pc+in.imm;
                                 out.has_jump=true;
                             }
                             break;
@@ -485,7 +527,7 @@ private:
                             //BLT
                             if((int)in.rs1<(int)in.rs2)
                             {
-                                out.pc+=in.imm;
+                                out.pc=in.pc+in.imm;
                                 out.has_jump=true;
                             }
                             break;
@@ -493,7 +535,7 @@ private:
                             //BGE
                             if((int)in.rs1>=(int)in.rs2)
                             {
-                                out.pc+=in.imm;
+                                out.pc=in.pc+in.imm;
                                 out.has_jump=true;
                             }
                             break;
@@ -501,7 +543,7 @@ private:
                             //BLTU
                             if(in.rs1<in.rs2)
                             {
-                                out.pc+=in.imm;
+                                out.pc=in.pc+in.imm;
                                 out.has_jump=true;
                             }
                             break;
@@ -509,7 +551,7 @@ private:
                             //BGEU
                             if(in.rs1>=in.rs2)
                             {
-                                out.pc+=in.imm;
+                                out.pc=in.pc+in.imm;
                                 out.has_jump=true;
                             }
                             break;
@@ -680,7 +722,8 @@ private:
             {
                 waitClock.ID++;
                 waitClock.EX+=2;
-                runReg.pc=out.pc;
+                //runReg.pc=out.pc;
+                out.change_to_pc=out.pc;
                 out.pc=in.pc;
             }else
                 runReg.run_with_out_if=true;
@@ -983,11 +1026,17 @@ private:
         bool mem_run=false;
 
         bool run_with_out_if=false;
+        bool mirror_run_with_out_if=false;
+
+        bool is_guess=false;
+        bool mirror_is_guess=false;
     }runReg;
 
     void load()
     {
         waitClock_mirror=waitClock;
+        runReg.mirror_is_guess=runReg.is_guess;
+        runReg.mirror_run_with_out_if=runReg.run_with_out_if;
         runReg.mirror_pc=runReg.pc;
         runReg.mirror_if_to_id=runReg.if_to_id;
         runReg.mirror_id_to_ex=runReg.id_to_ex;
@@ -997,7 +1046,7 @@ private:
         runReg.mirror_id_run=runReg.id_run;
         runReg.mirror_ex_run=runReg.ex_run;
         runReg.mirror_mem_run=runReg.mem_run;
-        runReg.pc+=4;
+        //runReg.pc+=4;
     }
 
     void cal()
@@ -1007,6 +1056,8 @@ private:
         EX(runReg.mirror_id_to_ex,runReg.ex_to_mem);
         MEM(runReg.mirror_ex_to_mem,runReg.mem_to_wb);
         WB(runReg.mirror_mem_to_wb);
+        if(runReg.if_run)runReg.pc+=4;
+        if(runReg.ex_run&&runReg.ex_to_mem.has_jump)runReg.pc=runReg.ex_to_mem.change_to_pc;
     }
 
 public:
@@ -1029,6 +1080,7 @@ public:
             load();
             cal();
             //reg_living.debug_print();
+            //std::cerr<<runReg.pc<<std::endl;
             if(runReg.mem_to_wb.cmd==(unsigned int)0x0ff00513)
             {
                 //final code running
