@@ -176,26 +176,32 @@ private:
 
     struct GUESS_REG
     {
-        enum status{strong_next=0,weak_next=1,weak_jump=2,strong_jump=3};
-        static const unsigned int map_size=1<<17;
-        unsigned int pool[map_size]{};
-        bool history_pool[map_size]{};
+        enum status{strong_next=0b00,weak_next=0b01,weak_jump=0b10,strong_jump=0b11};
+        static const unsigned int map_size=1<<9;
+        static const unsigned int history_size=1<<11;
+        unsigned int pool[map_size][history_size]{};
+        unsigned int history[map_size]{};
         GUESS_REG()
         {
-            for(unsigned int & i : pool)i=status(weak_next);
-            for(bool & i : history_pool)i=false;
+            for(auto & i : pool)
+            {
+                for(unsigned int & j : i)
+                    j=0;
+            }
+            for(auto & i : history)
+                i=0;
         }
     }guessReg;
 
-    unsigned int trueHistory=0;
     bool guess_next_pc(unsigned int now_pc)
     {
         runReg.all_branch++;
         //todo
         //true jump
         //false not jump
-        unsigned int token=now_pc&(unsigned int)(0xFFFF);
-        if(guessReg.pool[token]==GUESS_REG::weak_jump||guessReg.pool[token]==GUESS_REG::strong_jump)
+        unsigned int token=now_pc&(unsigned int)(0xFF);
+        /*unsigned int his=guessReg.history[token];
+        if(guessReg.pool[token][his]==GUESS_REG::weak_jump||guessReg.pool[token][his]==GUESS_REG::strong_jump)
         {
             //guess_true++;
             return true;
@@ -203,46 +209,35 @@ private:
         {
             //guess_false++;
             return false;
-        }
-        //return guessReg.history_pool[trueHistory];
+        }*/
+        return guessReg.pool[token][guessReg.history[token]];
     }
 
     void guess_return(unsigned int now_pc,bool is_correct)
     {
-        /*guessReg.history_pool[trueHistory]=(unsigned int)is_correct;
-        trueHistory<<=1;
-        trueHistory+=(unsigned int)is_correct;
-        trueHistory&=(unsigned int)(0xFFFF);
-        return;*/
-        unsigned int token=now_pc&(unsigned int)(0xFFFF);
-        /*bool is_jump;
+        unsigned int token=now_pc&(unsigned int)(0xFF);
+        /*unsigned int his=guessReg.history[token];
+        unsigned int result;
         if(is_correct)
         {
-            if(guessReg.pool[token]==GUESS_REG::weak_jump||guessReg.pool[token]==GUESS_REG::strong_jump)is_jump=true;
-            else is_jump=false;
+            if(guessReg.pool[token][his]==GUESS_REG::weak_jump)result=GUESS_REG::strong_jump;
+            if(guessReg.pool[token][his]==GUESS_REG::weak_next)result=GUESS_REG::strong_next;
         }else
         {
-            if(guessReg.pool[token]==GUESS_REG::weak_jump||guessReg.pool[token]==GUESS_REG::strong_jump)is_jump=false;
-            else is_jump=true;
+            if(guessReg.pool[token][his]==GUESS_REG::weak_jump)result=GUESS_REG::weak_next;
+            if(guessReg.pool[token][his]==GUESS_REG::weak_next)result=GUESS_REG::weak_jump;
+            if(guessReg.pool[token][his]==GUESS_REG::strong_jump)result=GUESS_REG::weak_jump;
+            if(guessReg.pool[token][his]==GUESS_REG::strong_next)result=GUESS_REG::weak_next;
         }
-        if(is_jump)
-        {
-            if(guessReg.pool[token]!=GUESS_REG::strong_jump)guessReg.pool[token]++;
-        }else
-        {
-            if(guessReg.pool[token]!=GUESS_REG::strong_next)guessReg.pool[token]--;
-        }*/
+        guessReg.pool[token][his]=result;
+        guessReg.history[token]=((his<<2)+result)&(0b1111111111);*/
+        bool is_jump;
         if(is_correct)
-        {
-            if(guessReg.pool[token]==GUESS_REG::weak_jump)guessReg.pool[token]=GUESS_REG::strong_jump;
-            if(guessReg.pool[token]==GUESS_REG::weak_next)guessReg.pool[token]=GUESS_REG::strong_next;
-        }else
-        {
-            if(guessReg.pool[token]==GUESS_REG::weak_jump)guessReg.pool[token]=GUESS_REG::weak_next;
-            if(guessReg.pool[token]==GUESS_REG::weak_next)guessReg.pool[token]=GUESS_REG::weak_jump;
-            if(guessReg.pool[token]==GUESS_REG::strong_jump)guessReg.pool[token]=GUESS_REG::weak_jump;
-            if(guessReg.pool[token]==GUESS_REG::strong_next)guessReg.pool[token]=GUESS_REG::weak_next;
-        }
+            is_jump=guessReg.pool[token][guessReg.history[token]];
+        else
+            is_jump=!(guessReg.pool[token][guessReg.history[token]]);
+        guessReg.pool[token][guessReg.history[token]]=is_jump;
+        guessReg.history[token]=((guessReg.history[token]<<1)+is_jump)&(0b1111111111);
     }
 
     void IF(const unsigned int& pc,if_id& out)
