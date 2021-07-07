@@ -863,7 +863,7 @@ private:
                             //LHU
                             unsigned int tem;
                             tem=mem_living.read(in.mem_operator_address+1);
-                            tem<<8;
+                            tem<<=8;
                             tem+=mem_living.read(in.mem_operator_address);
                             out.wb_value=tem;
                             break;
@@ -1165,11 +1165,14 @@ public:
             cal();
             reg_living.debug_print();
         }*/
-        std::cout<<(((unsigned int)reg_living.read(10)) & 255u)<<std::endl;
-        std::cerr<<"cpu run times: "<<clock_cnt<<std::endl;
-        std::cerr<<"branch command number: "<<runReg.all_branch<<std::endl;
-        std::cerr<<"correct guess number:  "<<runReg.all_branch-runReg.wrong_cnt<<std::endl;
-        std::cerr<<"success rate: "<<std::right<<std::fixed<<std::setprecision(3)<<(double)(runReg.all_branch-runReg.wrong_cnt)/runReg.all_branch*100<<'%'<<std::endl;
+        //std::cout<<(((unsigned int)reg_living.read(10)) & 255u)<<std::endl;
+        //std::cerr<<"cpu run times: "<<clock_cnt<<std::endl;
+        //std::cerr<<"branch command number: "<<runReg.all_branch<<std::endl;
+        //std::cerr<<"correct guess number:  "<<runReg.all_branch-runReg.wrong_cnt<<std::endl;
+        //std::cerr<<"success rate: "<<std::right<<std::fixed<<std::setprecision(3)<<(double)(runReg.all_branch-runReg.wrong_cnt)/runReg.all_branch*100<<'%'<<std::endl;
+        std::cout<<std::right<<std::fixed<<std::setprecision(3)<<(double)(runReg.all_branch-runReg.wrong_cnt)/runReg.all_branch*100<<'%'<<std::endl;
+        std::cout<<runReg.all_branch-runReg.wrong_cnt<<std::endl;
+        std::cout<<runReg.all_branch;
     }
 };
 
