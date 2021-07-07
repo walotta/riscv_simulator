@@ -46,7 +46,7 @@ with open('success_rate.md', 'w') as f:
         f.write('| :----: | :----: |\n')
         for i in range(len(run_list)):
             f.write('|'+run_list[i]+'|'+ans_list[i]+'|\n')
-        f.write('`powered by walotta`')
+        f.write('\n`powered by walotta`')
 
 os.system('rm code')
 print('run finish')
