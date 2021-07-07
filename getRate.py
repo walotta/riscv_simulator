@@ -38,7 +38,7 @@ with open('success_rate.md', 'w') as f:
         f.write('| :----: | :----: | :------------: | :----------: |\n')
         for i in range(len(run_list)):
             f.write('|'+run_list[i]+'|'+true_ans[i][0]+'|'+true_ans[i][1]+'|'+true_ans[i][2]+'|\n')
-        f.write('`powered by walotta`')
+        f.write('\n`powered by walotta`')
     else:
         f.write('`powered by walotta`')
         f.write('## 分支预测成功率\n')

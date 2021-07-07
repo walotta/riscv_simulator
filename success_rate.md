@@ -19,4 +19,5 @@
 |statement_test|59.406%|120|202|
 |superloop|98.681%|429290|435027|
 |tak|79.281%|48075|60639|
+
 `powered by walotta`
