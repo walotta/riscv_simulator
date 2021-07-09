@@ -16,7 +16,7 @@ if run_with_cmake:
     os.system('cmake CMakeLists.txt')
     os.system('make')
 else:
-    os.system('g++ src/base_run.cpp -o code -std=c++11')
+    os.system('g++ '+code_path+' -o code -std=c++11')
 
 for test_name in run_list:
     print("now run "+test_name)
