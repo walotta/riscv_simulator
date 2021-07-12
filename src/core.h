@@ -8,6 +8,8 @@
 #include "memory.h"
 #include "register.h"
 #include <iomanip>
+#include <thread>
+#include <functional>
 
 class core
 {
@@ -1115,11 +1117,21 @@ private:
 
     void cal()
     {
-        IF(runReg.mirror_pc,runReg.if_to_id);
-        ID(runReg.mirror_if_to_id,runReg.id_to_ex);
-        EX(runReg.mirror_id_to_ex,runReg.ex_to_mem);
-        MEM(runReg.mirror_ex_to_mem,runReg.mem_to_wb);
-        WB(runReg.mirror_mem_to_wb);
+        std::thread _if_([this]{IF(runReg.mirror_pc,runReg.if_to_id);});
+        std::thread _id_([this]{ID(runReg.mirror_if_to_id,runReg.id_to_ex);});
+        std::thread _ex_([this]{EX(runReg.mirror_id_to_ex,runReg.ex_to_mem);});
+        std::thread _mem_([this]{MEM(runReg.mirror_ex_to_mem,runReg.mem_to_wb);});
+        std::thread _wb_([this]{WB(runReg.mirror_mem_to_wb);});
+        //IF(runReg.mirror_pc,runReg.if_to_id);
+        //ID(runReg.mirror_if_to_id,runReg.id_to_ex);
+        //EX(runReg.mirror_id_to_ex,runReg.ex_to_mem);
+        //MEM(runReg.mirror_ex_to_mem,runReg.mem_to_wb);
+        //WB(runReg.mirror_mem_to_wb);
+        _if_.join();
+        _id_.join();
+        _ex_.join();
+        _mem_.join();
+        _wb_.join();
         if(runReg.if_run)runReg.pc+=4;
         if(runReg.id_run&&(runReg.id_to_ex.jump_cmd||runReg.id_to_ex.branch_cmd))runReg.pc=runReg.id_to_ex.guess_pc;
         if(runReg.ex_run&&runReg.ex_to_mem.guess_wrong)runReg.pc=runReg.ex_to_mem.change_to_pc;
@@ -1165,14 +1177,14 @@ public:
             cal();
             reg_living.debug_print();
         }*/
-        //std::cout<<(((unsigned int)reg_living.read(10)) & 255u)<<std::endl;
-        //std::cerr<<"cpu run times: "<<clock_cnt<<std::endl;
-        //std::cerr<<"branch command number: "<<runReg.all_branch<<std::endl;
-        //std::cerr<<"correct guess number:  "<<runReg.all_branch-runReg.wrong_cnt<<std::endl;
-        //std::cerr<<"success rate: "<<std::right<<std::fixed<<std::setprecision(3)<<(double)(runReg.all_branch-runReg.wrong_cnt)/runReg.all_branch*100<<'%'<<std::endl;
-        std::cout<<std::right<<std::fixed<<std::setprecision(3)<<(double)(runReg.all_branch-runReg.wrong_cnt)/runReg.all_branch*100<<'%'<<std::endl;
-        std::cout<<runReg.all_branch-runReg.wrong_cnt<<std::endl;
-        std::cout<<runReg.all_branch;
+        std::cout<<(((unsigned int)reg_living.read(10)) & 255u)<<std::endl;
+        std::cerr<<"cpu run times: "<<clock_cnt<<std::endl;
+        std::cerr<<"branch command number: "<<runReg.all_branch<<std::endl;
+        std::cerr<<"correct guess number:  "<<runReg.all_branch-runReg.wrong_cnt<<std::endl;
+        std::cerr<<"success rate: "<<std::right<<std::fixed<<std::setprecision(3)<<(double)(runReg.all_branch-runReg.wrong_cnt)/runReg.all_branch*100<<'%'<<std::endl;
+        //std::cout<<std::right<<std::fixed<<std::setprecision(3)<<(double)(runReg.all_branch-runReg.wrong_cnt)/runReg.all_branch*100<<'%'<<std::endl;
+        //std::cout<<runReg.all_branch-runReg.wrong_cnt<<std::endl;
+        //std::cout<<runReg.all_branch;
     }
 };
 
